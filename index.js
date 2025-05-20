@@ -639,110 +639,34 @@ app.get('/novilloarrendamiento', async (req, res) => {
 //   }
 // });
 
+
 const chromium = require('chrome-aws-lambda');
-const puppeteer = require('puppeteer-core');
-
-// app.get('/precioschicago', async (req, res) => {
-//   console.log('[INFO] /precioschicago: Inicio de la petición');
-
-//   let browser;
-//   try {
-//     console.log('[INFO] Lanzando navegador Puppeteer...');
-
-//     browser = await puppeteer.launch({
-//       args: chromium.args,
-//       defaultViewport: chromium.defaultViewport,
-//       executablePath: await chromium.executablePath,
-//       headless: chromium.headless,
-//     });
-
-//     console.log('[INFO] Navegador lanzado');
-
-//     const page = await browser.newPage();
-//     console.log('[INFO] Página nueva creada');
-
-//     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36');
-//     console.log('[INFO] User agent seteado');
-
-//     const url = 'https://www.bolsadecereales.com/precios-internacionales';
-//     console.log('[INFO] Navegando a la URL...');
-//     await page.goto(url, { waitUntil: 'networkidle2' });
-//     console.log('[INFO] Página cargada correctamente');
-
-//     console.log('[INFO] Extrayendo datos de Chicago...');
-//     const datosChicago = await page.evaluate(() => {
-//       const bloqueChicago = [...document.querySelectorAll('div.bloque-tabla')].find(div => {
-//         const titulo = div.querySelector('.titulo-tabla');
-//         return titulo && titulo.textContent.trim() === 'Chicago';
-//       });
-
-//       if (!bloqueChicago) return [];
-
-//       const filas = bloqueChicago.querySelectorAll('table.tabla-cotizaciones tbody tr');
-
-//       const resultados = [];
-
-//       filas.forEach(tr => {
-//         const celdas = tr.querySelectorAll('td');
-//         if (celdas.length === 4) {
-//           const producto = celdas[0].innerText.trim();
-//           const posicion = celdas[1].innerText.trim();
-//           const cierre = celdas[2].innerText.trim();
-//           const variacion = celdas[3].innerText.trim();
-
-//           if (producto && producto.toLowerCase() !== 'producto' && posicion !== '') {
-//             resultados.push({ producto, posicion, cierre, variacion });
-//           }
-//         }
-//       });
-
-//       return resultados;
-//     });
-
-//     console.log('[INFO] Datos extraídos:', datosChicago);
-
-//     const filtrados = datosChicago.filter(item =>
-//       (item.producto === 'Maíz' && item.posicion === 'Jul2025') ||
-//       (item.producto === 'Soja' && item.posicion === 'Jul2025') ||
-//       (item.producto === 'Trigo Chicago' && item.posicion === 'Sep2025')
-//     );
-
-//     console.log('[INFO] Datos filtrados:', filtrados);
-
-//     console.log('[INFO] Cerrando navegador...');
-//     await browser.close();
-//     console.log('[INFO] Navegador cerrado');
-
-//     console.log('[INFO] Fin de la petición /precioschicago');
-//     res.json(filtrados);
-
-//   } catch (error) {
-//     console.error('[ERROR] Error en /precioschicago:', error);
-//     if (browser) await browser.close();
-//     res.status(500).json({ error: error.message });
-//   }
-// });
 
 app.get('/precioschicago', async (req, res) => {
-  console.log('[INFO] /precioschicago: Inicio de la petición');
-
-  let browser;
+  let browser = null;
   try {
-    console.log('[INFO] Lanzando navegador Puppeteer (Vercel)...');
-    browser = await puppeteer.launch({
+    console.log('[INFO] /precioschicago: Inicio de la petición');
+
+    browser = await chromium.puppeteer.launch({
       args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath,
       headless: chromium.headless,
     });
     console.log('[INFO] Navegador lanzado');
 
     const page = await browser.newPage();
+    console.log('[INFO] Página nueva creada');
+
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36'
     );
+    console.log('[INFO] User agent seteado');
 
     const url = 'https://www.bolsadecereales.com/precios-internacionales';
+    console.log('[INFO] Navegando a la URL...');
     await page.goto(url, { waitUntil: 'networkidle2' });
+    console.log('[INFO] Página cargada correctamente');
 
     const datosChicago = await page.evaluate(() => {
       const bloqueChicago = [...document.querySelectorAll('div.bloque-tabla')].find(div => {
@@ -753,7 +677,6 @@ app.get('/precioschicago', async (req, res) => {
       if (!bloqueChicago) return [];
 
       const filas = bloqueChicago.querySelectorAll('table.tabla-cotizaciones tbody tr');
-
       const resultados = [];
 
       filas.forEach(tr => {
@@ -773,21 +696,27 @@ app.get('/precioschicago', async (req, res) => {
       return resultados;
     });
 
+    // Filtro personalizado
     const filtrados = datosChicago.filter(item =>
       (item.producto === 'Maíz' && item.posicion === 'Jul2025') ||
       (item.producto === 'Soja' && item.posicion === 'Jul2025') ||
       (item.producto === 'Trigo Chicago' && item.posicion === 'Sep2025')
     );
 
-    await browser.close();
-    res.json(filtrados);
+    console.log('[INFO] Datos filtrados:', filtrados);
 
+    await browser.close();
+    console.log('[INFO] Navegador cerrado');
+    console.log('[INFO] Fin de la petición /precioschicago');
+
+    res.json(filtrados);
   } catch (error) {
     console.error('[ERROR] Error en /precioschicago:', error);
     if (browser) await browser.close();
     res.status(500).json({ error: error.message });
   }
 });
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
