@@ -562,160 +562,29 @@ app.get('/novilloarrendamiento', async (req, res) => {
   }
 });
 
-// para que funcione instalar puppeteer
-// const puppeteer = require('puppeteer');
-// app.get('/precioschicago', async (req, res) => {
-//   console.log('[INFO] /precioschicago: Inicio de la petición');
-
-//   let browser;
-//   try {
-//     console.log('[INFO] Lanzando navegador Puppeteer...');
-//     browser = await puppeteer.launch({ headless: true });
-//     console.log('[INFO] Navegador lanzado');
-
-//     const page = await browser.newPage();
-//     console.log('[INFO] Página nueva creada');
-
-//     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36');
-//     console.log('[INFO] User agent seteado');
-
-//     const url = 'https://www.bolsadecereales.com/precios-internacionales';
-//     console.log('[INFO] Navegando a la URL...');
-//     await page.goto(url, { waitUntil: 'networkidle2' });
-//     console.log('[INFO] Página cargada correctamente');
-
-//     console.log('[INFO] Extrayendo datos de Chicago...');
-//     const datosChicago = await page.evaluate(() => {
-//       const bloqueChicago = [...document.querySelectorAll('div.bloque-tabla')].find(div => {
-//         const titulo = div.querySelector('.titulo-tabla');
-//         return titulo && titulo.textContent.trim() === 'Chicago';
-//       });
-
-//       if (!bloqueChicago) return [];
-
-//       const filas = bloqueChicago.querySelectorAll('table.tabla-cotizaciones tbody tr');
-
-//       const resultados = [];
-
-//       filas.forEach(tr => {
-//         const celdas = tr.querySelectorAll('td');
-//         if (celdas.length === 4) {
-//           const producto = celdas[0].innerText.trim();
-//           const posicion = celdas[1].innerText.trim();
-//           const cierre = celdas[2].innerText.trim();
-//           const variacion = celdas[3].innerText.trim();
-
-//           if (producto && producto.toLowerCase() !== 'producto' && posicion !== '') {
-//             resultados.push({ producto, posicion, cierre, variacion });
-//           }
-//         }
-//       });
-
-//       return resultados;
-//     });
-
-//     console.log('[INFO] Datos extraídos:', datosChicago);
-
-//     // FILTRO personalizado
-//     const filtrados = datosChicago.filter(item =>
-//       (item.producto === 'Maíz' && item.posicion === 'Jul2025') ||
-//       (item.producto === 'Soja' && item.posicion === 'Jul2025') ||
-//       (item.producto === 'Trigo Chicago' && item.posicion === 'Sep2025')
-//     );
-
-//     console.log('[INFO] Datos filtrados:', filtrados);
-
-//     console.log('[INFO] Cerrando navegador...');
-//     await browser.close();
-//     console.log('[INFO] Navegador cerrado');
-
-//     console.log('[INFO] Fin de la petición /precioschicago');
-//     res.json(filtrados);
-
-//   } catch (error) {
-//     console.error('[ERROR] Error en /precioschicago:', error);
-//     if (browser) await browser.close();
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
-
-const chromium = require('chrome-aws-lambda');
-
+// Ruta para obtener el archivo preciosChicago.json desde GitHub
 app.get('/precioschicago', async (req, res) => {
-  let browser = null;
   try {
-    console.log('[INFO] /precioschicago: Inicio de la petición');
+    const githubRawUrl = 'https://raw.githubusercontent.com/Combaagu/scraping/main/preciosChicago.json';
 
-    browser = await chromium.puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless,
-    });
-    console.log('[INFO] Navegador lanzado');
+    const response = await axios.get(githubRawUrl);
+    const data = response.data;
 
-    const page = await browser.newPage();
-    console.log('[INFO] Página nueva creada');
-
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0 Safari/537.36'
-    );
-    console.log('[INFO] User agent seteado');
-
-    const url = 'https://www.bolsadecereales.com/precios-internacionales';
-    console.log('[INFO] Navegando a la URL...');
-    await page.goto(url, { waitUntil: 'networkidle2' });
-    console.log('[INFO] Página cargada correctamente');
-
-    const datosChicago = await page.evaluate(() => {
-      const bloqueChicago = [...document.querySelectorAll('div.bloque-tabla')].find(div => {
-        const titulo = div.querySelector('.titulo-tabla');
-        return titulo && titulo.textContent.trim() === 'Chicago';
-      });
-
-      if (!bloqueChicago) return [];
-
-      const filas = bloqueChicago.querySelectorAll('table.tabla-cotizaciones tbody tr');
-      const resultados = [];
-
-      filas.forEach(tr => {
-        const celdas = tr.querySelectorAll('td');
-        if (celdas.length === 4) {
-          const producto = celdas[0].innerText.trim();
-          const posicion = celdas[1].innerText.trim();
-          const cierre = celdas[2].innerText.trim();
-          const variacion = celdas[3].innerText.trim();
-
-          if (producto && producto.toLowerCase() !== 'producto' && posicion !== '') {
-            resultados.push({ producto, posicion, cierre, variacion });
-          }
-        }
-      });
-
-      return resultados;
+    res.json({
+      success: true,
+      data
     });
 
-    // Filtro personalizado
-    const filtrados = datosChicago.filter(item =>
-      (item.producto === 'Maíz' && item.posicion === 'Jul2025') ||
-      (item.producto === 'Soja' && item.posicion === 'Jul2025') ||
-      (item.producto === 'Trigo Chicago' && item.posicion === 'Sep2025')
-    );
-
-    console.log('[INFO] Datos filtrados:', filtrados);
-
-    await browser.close();
-    console.log('[INFO] Navegador cerrado');
-    console.log('[INFO] Fin de la petición /precioschicago');
-
-    res.json(filtrados);
   } catch (error) {
-    console.error('[ERROR] Error en /precioschicago:', error);
-    if (browser) await browser.close();
-    res.status(500).json({ error: error.message });
+    console.error('Error al leer el archivo de GitHub:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener el archivo desde GitHub',
+      error: error.message
+    });
   }
 });
+
 
 
 const PORT = process.env.PORT || 3000;
