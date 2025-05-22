@@ -12,34 +12,34 @@ const API_TOKEN = process.env.API_TOKEN
 
 // Middleware para verificar el token de autenticación
 const authMiddleware = (req, res, next) => {
-    // Rutas que no requieren autenticación
-    if (req.path === '/' || req.path === '/weather') {
-      return next();
-    }
-  
-    const authHeader = req.headers.authorization;
+  // Rutas que no requieren autenticación
+  if (req.path === '/' || req.path === '/weather') {
+    return next();
+  }
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        error: 'No autorizado',
-        message: 'Se requiere un token de autenticación válido'
-      });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    
-    if (token !== API_TOKEN) {
-      return res.status(403).json({
-        success: false,
-        error: 'Acceso denegado',
-        message: 'Token de autenticación inválido'
-      });
-    }
-    
-    next();
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      success: false,
+      error: 'No autorizado',
+      message: 'Se requiere un token de autenticación válido'
+    });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  if (token !== API_TOKEN) {
+    return res.status(403).json({
+      success: false,
+      error: 'Acceso denegado',
+      message: 'Token de autenticación inválido'
+    });
+  }
+
+  next();
 };
-  
+
 // Aplicar middleware de autenticación a todas las rutas
 app.use(authMiddleware);
 
@@ -58,14 +58,14 @@ const WEATHER_ICONS = {
 function formatTime(timestamp) {
   const date = new Date(timestamp * 1000);
   const argentinaTime = new Date(date.getTime() - (3 * 60 * 60 * 1000));
-  
+
   return argentinaTime.toLocaleTimeString('es-AR', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false
   })
-  .replace('a. m.', 'AM')
-  .replace('p. m.', 'PM');
+    .replace('a. m.', 'AM')
+    .replace('p. m.', 'PM');
 }
 
 function formatDate(timestamp) {
@@ -236,31 +236,31 @@ app.get('/precios/:producto', async (req, res) => {
   try {
     const productoQuery = req.params.producto.toLowerCase();
     const url = 'https://www.cac.bcr.com.ar/es/precios-de-pizarra';
-    
+
     const response = await axios.get(url);
     const $ = cheerio.load(response.data);
-    
+
     // Extraer la fecha de los precios
     const fechaTexto = $('.paragraph--type--prices-board h3').text().trim();
     const fechaMatch = fechaTexto.match(/Precios Pizarra del día (\d{2}\/\d{2}\/\d{4})/);
     const fecha = fechaMatch ? fechaMatch[1] : 'Fecha no disponible';
-    
+
     // Array para almacenar los resultados filtrados
     const precios = [];
-    
+
     // Extraer información de cada tablero de precios (board)
     $('.board').each((index, element) => {
       const producto = $(element).find('h3').text().trim();
-      
+
       // Filtrar por producto (case insensitive)
       if (producto.toLowerCase().includes(productoQuery)) {
         const precioTexto = $(element).find('.price').text().trim();
         const precio = precioTexto !== 'S/C' ? precioTexto : 'Sin cotización';
-        
+
         // Extraer información adicional
         const diferenciaPrecio = $(element).find('.bottom .cell:nth-child(2)').text().trim();
         const diferenciaPorcentaje = $(element).find('.bottom .cell:nth-child(4)').text().trim();
-        
+
         // Determinar tendencia
         let tendencia = 'Sin cambios';
         if ($(element).find('.fa-arrow-up').length > 0) {
@@ -268,7 +268,7 @@ app.get('/precios/:producto', async (req, res) => {
         } else if ($(element).find('.fa-arrow-down').length > 0) {
           tendencia = 'Baja';
         }
-        
+
         // Verificar si hay precio estimativo
         let precioEstimativo = null;
         const precioSCText = $(element).find('.price-sc').text().trim();
@@ -276,7 +276,7 @@ app.get('/precios/:producto', async (req, res) => {
           const precioEstMatch = precioSCText.match(/\(Estimativo\) (.+)/);
           precioEstimativo = precioEstMatch ? precioEstMatch[1] : precioSCText;
         }
-        
+
         precios.push({
           fecha,
           producto,
@@ -288,12 +288,12 @@ app.get('/precios/:producto', async (req, res) => {
         });
       }
     });
-    
+
     // Extraer información del pie de página
     const footerText = $('.price-board-footer div:nth-child(2)').text().trim();
     const horaMatch = footerText.match(/Hora: (\d{2}:\d{2})/);
     const hora = horaMatch ? horaMatch[1] : 'Hora no disponible';
-    
+
     res.json({
       success: true,
       producto: productoQuery,
@@ -302,7 +302,7 @@ app.get('/precios/:producto', async (req, res) => {
       data: precios,
       total: precios.length
     });
-    
+
   } catch (error) {
     console.error('Error al hacer scraping:', error);
     res.status(500).json({
@@ -453,7 +453,7 @@ app.get('/dolarprecio', async (req, res) => {
       parseCotizacion(libre.data, "dolar_libre")
     ];
 
-      res.json(cotizaciones);
+    res.json(cotizaciones);
 
   } catch (error) {
     console.error('Error al obtener cotizaciones:', error.message);
@@ -503,19 +503,91 @@ app.get('/ternero', async (req, res) => {
 
 const qs = require('qs');
 
-// Función para formatear la fecha como dd/mm/yyyy
-function getTodayFormatted() {
-  const today = new Date();
-  const day = String(today.getDate()).padStart(2, '0');
-  const month = String(today.getMonth() + 1).padStart(2, '0'); // Enero = 0
-  const year = today.getFullYear();
+// // Función para formatear la fecha como dd/mm/yyyy
+// function getTodayFormatted() {
+//   const today = new Date();
+//   const day = String(today.getDate()).padStart(2, '0');
+//   const month = String(today.getMonth() + 1).padStart(2, '0'); // Enero = 0
+//   const year = today.getFullYear();
+//   return `${day}/${month}/${year}`;
+// }
+// //Ruta para obtener datos Novillo de Arrendamiento del dia
+// app.get('/novilloarrendamiento', async (req, res) => {
+//   const url = 'https://www.mercadoagroganadero.com.ar/dll/hacienda2.dll/haciinfo000013';
+
+//   const fechaHoy = getTodayFormatted();
+
+//   const formData = {
+//     ID: "",
+//     CP: "",
+//     FLASH: "",
+//     USUARIO: "SIN IDENTIFICAR",
+//     OPCIONMENU: "",
+//     OPCIONSUBMENU: "",
+//     txtFechaIni: fechaHoy,
+//     txtFechaFin: fechaHoy
+//   };
+
+//   try {
+//     const response = await axios.post(url, qs.stringify(formData), {
+//       headers: {
+//         'Content-Type': 'application/x-www-form-urlencoded'
+//       }
+//     });
+
+//     const $ = cheerio.load(response.data);
+
+//     const resultados = [];
+
+//     $('table.table-striped > tbody > tr').each((i, el) => {
+//       const tds = $(el).find('td');
+
+//       if (tds.length >= 5) {
+//         // Obtener y limpiar el importe
+//         const rawImporte = $(tds[2]).text().trim();
+//         const importeNumerico = parseFloat(
+//           rawImporte.replace(/\./g, '').replace(',', '.')
+//         );
+
+//         // Obtener y limpiar el índice de arrendamiento
+//         const rawIndice = $(tds[3]).text().trim();
+
+//         // Verificamos si contiene solo números, comas o puntos
+//         const indiceNumerico = /^[\d.,]+$/.test(rawIndice)
+//           ? parseFloat(rawIndice.replace(/\./g, '').replace(',', '.'))
+//           : null;
+
+//         resultados.push({
+//           fecha: $(tds[0]).text().trim(),
+//           cabIngresadas: $(tds[1]).text().trim(),
+//           importe: importeNumerico,
+//           indiceArrendamiento: indiceNumerico,
+//           variacion: $(tds[4]).text().trim()
+//         });
+//       }
+//     });
+
+//     // toma solo el valor del dia y no la de Totales
+//     const primerObject = resultados.find(r => r.fecha.toLowerCase() !== 'totales');
+//     res.json(primerObject ? [primerObject] : []);
+
+//   } catch (error) {
+//     console.error('Error en scraping de arrendamiento:', error.message);
+//     res.status(500).json({ error: 'Error al obtener los datos de arrendamiento' });
+//   }
+// });
+
+
+function formatDate(date) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
   return `${day}/${month}/${year}`;
 }
 
-//Ruta para obtener datos Novillo de Arrendamiento del dia
-app.get('/novilloarrendamiento', async (req, res) => {
+async function fetchIndiceByDate(date) {
   const url = 'https://www.mercadoagroganadero.com.ar/dll/hacienda2.dll/haciinfo000013';
-  const fechaHoy = getTodayFormatted();
+  const fecha = formatDate(date);
 
   const formData = {
     ID: "",
@@ -524,8 +596,8 @@ app.get('/novilloarrendamiento', async (req, res) => {
     USUARIO: "SIN IDENTIFICAR",
     OPCIONMENU: "",
     OPCIONSUBMENU: "",
-    txtFechaIni: fechaHoy,
-    txtFechaFin: fechaHoy
+    txtFechaIni: fecha,
+    txtFechaFin: fecha
   };
 
   try {
@@ -540,29 +612,50 @@ app.get('/novilloarrendamiento', async (req, res) => {
 
     $('table.table-striped > tbody > tr').each((i, el) => {
       const tds = $(el).find('td');
-
       if (tds.length >= 5) {
         const rawImporte = $(tds[2]).text().trim();
-        const importeNumerico = parseFloat(
-          rawImporte.replace(/\./g, '').replace(',', '.')
-        );
+        const importeNumerico = parseFloat(rawImporte.replace(/\./g, '').replace(',', '.'));
+
+        const rawIndice = $(tds[3]).text().trim();
+        const indiceNumerico = /^[\d.,]+$/.test(rawIndice)
+          ? parseFloat(rawIndice.replace(/\./g, '').replace(',', '.'))
+          : null;
 
         resultados.push({
           fecha: $(tds[0]).text().trim(),
           cabIngresadas: $(tds[1]).text().trim(),
           importe: importeNumerico,
-          indiceArrendamiento: $(tds[3]).text().trim(),
+          indiceArrendamiento: indiceNumerico,
           variacion: $(tds[4]).text().trim()
         });
       }
     });
 
-    const primerValido = resultados.find(r => r.fecha.toLowerCase() !== 'totales');
-    res.json(primerValido ? [primerValido] : []);
+    const datoValido = resultados.find(r => r.fecha.toLowerCase() !== 'totales' && r.indiceArrendamiento !== null);
+    return datoValido || null;
 
   } catch (error) {
-    console.error('Error en scraping de arrendamiento:', error.message);
-    res.status(500).json({ error: 'Error al obtener los datos de arrendamiento' });
+    console.error('Error al hacer scraping para la fecha', fecha, ':', error.message);
+    return null;
+  }
+}
+
+app.get('/novilloarrendamiento', async (req, res) => {
+  let date = new Date();
+  const maxDiasAtras = 10; // intenta hasta 10 días hacia atrás si no encuentra
+  let resultado = null;
+
+  for (let i = 0; i < maxDiasAtras; i++) {
+    resultado = await fetchIndiceByDate(date);
+    if (resultado) break;
+    // Resta un día
+    date.setDate(date.getDate() - 1);
+  }
+
+  if (resultado) {
+    res.json([resultado]);
+  } else {
+    res.status(404).json({ error: 'No se encontró índice válido en los últimos días' });
   }
 });
 
