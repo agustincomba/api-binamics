@@ -563,9 +563,10 @@ app.get('/novilloarrendamiento', async (req, res) => {
 });
 
 // Ruta para obtener el archivo preciosChicago.json desde GitHub
+// Ruta para obtener el archivo preciosChicago.json desde GitHub
 app.get('/precioschicago', async (req, res) => {
   try {
-    const githubRawUrl = 'https://raw.githubusercontent.com/Combaagu/scraping/main/preciosChicago.json';
+    const githubRawUrl = 'https://raw.githubusercontent.com/agustincomba/scraping/main/preciosChicago.json';
 
     const response = await axios.get(githubRawUrl);
     const data = response.data;
@@ -584,6 +585,7 @@ app.get('/precioschicago', async (req, res) => {
     });
   }
 });
+
 
 
 
