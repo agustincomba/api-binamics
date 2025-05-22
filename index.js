@@ -157,68 +157,61 @@ Pronóstico de 4 días:
 });
 
 // Ruta para obtener todos los precios de pizarra de la BCR
-app.get('/precios',  async (req, res) => {
+app.get('/precios', async (req, res) => {
   try {
-    // URL de la página a scrapear
     const url = 'https://www.cac.bcr.com.ar/es/precios-de-pizarra';
-    
-    // Hacer la petición HTTP para obtener el HTML
     const response = await axios.get(url);
-    
-    // Cargar el HTML en cheerio
     const $ = cheerio.load(response.data);
-    
-    // Array para almacenar los resultados
+
     const precios = [];
-    
-    // Extraer la fecha de los precios
+
     const fechaTexto = $('.paragraph--type--prices-board h3').text().trim();
     const fechaMatch = fechaTexto.match(/Precios Pizarra del día (\d{2}\/\d{2}\/\d{4})/);
     const fecha = fechaMatch ? fechaMatch[1] : 'Fecha no disponible';
-    
-    // Extraer información de cada tablero de precios (board)
+
     $('.board').each((index, element) => {
       const producto = $(element).find('h3').text().trim();
+
+      // ❌ Excluir Sorgo
+      if (producto.toLowerCase().includes('sorgo')) return;
+
       const precioTexto = $(element).find('.price').text().trim();
-      const precio = precioTexto !== 'S/C' ? precioTexto : 'Sin cotización';
-      
-      // Extraer información adicional
+      const precioNumerico = precioTexto !== 'S/C'
+        ? parseFloat(precioTexto.replace(/\./g, '').replace(',', '.').replace('$', ''))
+        : null;
+
       const diferenciaPrecio = $(element).find('.bottom .cell:nth-child(2)').text().trim();
       const diferenciaPorcentaje = $(element).find('.bottom .cell:nth-child(4)').text().trim();
-      
-      // Determinar tendencia
+
       let tendencia = 'Sin cambios';
       if ($(element).find('.fa-arrow-up').length > 0) {
         tendencia = 'Sube';
       } else if ($(element).find('.fa-arrow-down').length > 0) {
         tendencia = 'Baja';
       }
-      
-      // Verificar si hay precio estimativo
+
       let precioEstimativo = null;
       const precioSCText = $(element).find('.price-sc').text().trim();
       if (precioSCText) {
         const precioEstMatch = precioSCText.match(/\(Estimativo\) (.+)/);
         precioEstimativo = precioEstMatch ? precioEstMatch[1] : precioSCText;
       }
-      
+
       precios.push({
         fecha,
         producto,
-        precio,
+        precio: precioNumerico,
         diferencia_precio: diferenciaPrecio,
         diferencia_porcentaje: diferenciaPorcentaje,
         tendencia,
         precio_estimativo: precioEstimativo
       });
     });
-    
-    // Extraer información del pie de página
+
     const footerText = $('.price-board-footer div:nth-child(2)').text().trim();
     const horaMatch = footerText.match(/Hora: (\d{2}:\d{2})/);
     const hora = horaMatch ? horaMatch[1] : 'Hora no disponible';
-    
-    // Devolver los resultados como JSON
+
     res.json({
       success: true,
       fecha_actualizacion: fecha,
@@ -226,7 +219,7 @@ app.get('/precios',  async (req, res) => {
       data: precios,
       total: precios.length
     });
-    
+
   } catch (error) {
     console.error('Error al hacer scraping:', error);
     res.status(500).json({
@@ -236,6 +229,7 @@ app.get('/precios',  async (req, res) => {
     });
   }
 });
+
 
 // Ruta para obtener precios de un producto específico
 app.get('/precios/:producto', async (req, res) => {
@@ -375,37 +369,27 @@ app.get('/', (req, res) => {
 // Ruta para obtener la Tasa Activa del BNA
 app.get('/tasaactivabna', async (req, res) => {
   try {
-    // URL de la página a scrapear
     const url = 'https://www.bna.com.ar/Home/InformacionAlUsuarioFinanciero';
-    
-    // Hacer la petición HTTP para obtener el HTML
     const response = await axios.get(url);
-    
-    // Cargar el HTML en cheerio
     const $ = cheerio.load(response.data);
-    
-    // Extraer la fecha de vigencia de la tasa
+
     let fechaVigencia = '';
     let tasaNominalAnual = '';
-    
-    // Buscar el texto que contiene "Tasa Activa Cartera General Diversas vigente desde el"
+
     $('body').find('p, div, span, h1, h2, h3, h4, h5, h6').each((index, element) => {
       const texto = $(element).text().trim();
-      
-      // Buscar la fecha de vigencia
+
       const fechaMatch = texto.match(/Tasa Activa Cartera General Diversas vigente desde el (\d{1,2}\/\d{1,2}\/\d{4})/);
       if (fechaMatch) {
         fechaVigencia = fechaMatch[1];
       }
-      
-      // Buscar la tasa nominal anual
+
       const tasaMatch = texto.match(/Tasa Nominal Anual Vencida con capitalización cada 30 días = T\.N\.A\. \(30 días\) = (\d+,\d+)%/);
       if (tasaMatch) {
         tasaNominalAnual = tasaMatch[1];
       }
     });
-    
-    // Verificar si se encontraron los datos
+
     if (!fechaVigencia || !tasaNominalAnual) {
       return res.status(404).json({
         success: false,
@@ -413,15 +397,17 @@ app.get('/tasaactivabna', async (req, res) => {
         message: 'La estructura de la página puede haber cambiado'
       });
     }
-    
-    // Devolver los resultados como JSON
+
+    // Convertir tasa a número
+    const tasaNominalAnualNumeric = parseFloat(tasaNominalAnual.replace(',', '.'));
+
     res.json({
       success: true,
       fecha_vigencia: fechaVigencia,
-      tasa_nominal_anual: tasaNominalAnual + '%',
+      tasa_nominal_anual: tasaNominalAnualNumeric,
       fecha_consulta: new Date().toLocaleDateString('es-AR')
     });
-    
+
   } catch (error) {
     console.error('Error al hacer scraping de la tasa activa BNA:', error);
     res.status(500).json({
@@ -442,7 +428,6 @@ app.get('/dolarprecio', async (req, res) => {
       dolar_libre: 'https://mercados.ambito.com//dolar/informal/variacion'
     };
 
-    // Hacer todas las peticiones en paralelo
     const [oficial, mep, ccl, libre] = await Promise.all([
       axios.get(urls.dolar_oficial),
       axios.get(urls.dolar_mep),
@@ -450,13 +435,22 @@ app.get('/dolarprecio', async (req, res) => {
       axios.get(urls.dolar_libre)
     ]);
 
-    // Devolver los resultados agrupados
-    res.json({
-      dolar_oficial: oficial.data,
-      dolar_mep: mep.data,
-      dolar_ccl: ccl.data,
-      dolar_libre: libre.data
+    // Función para convertir strings con coma a float
+    const toFloat = str => parseFloat(str.replace(',', '.'));
+
+    // Modificar los valores de compra
+    const parseCotizacion = data => ({
+      ...data,
+      compra: data.compra ? toFloat(data.compra) : null
     });
+
+    res.json({
+      dolar_oficial: parseCotizacion(oficial.data),
+      dolar_mep: parseCotizacion(mep.data),
+      dolar_ccl: parseCotizacion(ccl.data),
+      dolar_libre: parseCotizacion(libre.data)
+    });
+
   } catch (error) {
     console.error('Error al obtener cotizaciones:', error.message);
     res.status(500).json({
@@ -466,6 +460,7 @@ app.get('/dolarprecio', async (req, res) => {
     });
   }
 });
+
 
 app.get('/novillo', async (req, res) => {
   try {
@@ -539,16 +534,25 @@ app.get('/novilloarrendamiento', async (req, res) => {
     });
 
     const $ = cheerio.load(response.data);
-    const resultados = [];
 
+
+    const resultados = [];
+    
     $('table.table-striped > tbody > tr').each((i, el) => {
       const tds = $(el).find('td');
 
       if (tds.length >= 5) {
+        const rawImporte = $(tds[2]).text().trim();
+
+        // Limpieza: saca puntos de miles, cambia coma decimal por punto, y parsea a número
+        const importeNumerico = parseFloat(
+          rawImporte.replace(/\./g, '').replace(',', '.')
+        );
+
         resultados.push({
           fecha: $(tds[0]).text().trim(),
           cabIngresadas: $(tds[1]).text().trim(),
-          importe: $(tds[2]).text().trim(),
+          importe: importeNumerico, // <-- Limpieza
           indiceArrendamiento: $(tds[3]).text().trim(),
           variacion: $(tds[4]).text().trim()
         });
@@ -556,6 +560,7 @@ app.get('/novilloarrendamiento', async (req, res) => {
     });
 
     res.json(resultados);
+
   } catch (error) {
     console.error('Error en scraping de arrendamiento:', error.message);
     res.status(500).json({ error: 'Error al obtener los datos de arrendamiento' });
@@ -563,13 +568,18 @@ app.get('/novilloarrendamiento', async (req, res) => {
 });
 
 // Ruta para obtener el archivo preciosChicago.json desde GitHub
-// Ruta para obtener el archivo preciosChicago.json desde GitHub
 app.get('/precioschicago', async (req, res) => {
   try {
     const githubRawUrl = 'https://raw.githubusercontent.com/agustincomba/scraping/main/preciosChicago.json';
 
     const response = await axios.get(githubRawUrl);
-    const data = response.data;
+    const rawData = response.data;
+
+    // Transformar 'cierre' a número
+    const data = rawData.map(item => ({
+      ...item,
+      cierre: parseFloat(item.cierre.replace(',', '.')) // <-- convierte cierre a número
+    }));
 
     res.json({
       success: true,
@@ -585,7 +595,6 @@ app.get('/precioschicago', async (req, res) => {
     });
   }
 });
-
 
 
 
