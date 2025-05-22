@@ -465,7 +465,6 @@ app.get('/dolarprecio', async (req, res) => {
   }
 });
 
-
 app.get('/novillo', async (req, res) => {
   try {
     const response = await axios.get('https://www.decampoacampo.com/gh_funciones.php?function=getListadoPreciosGordo');
@@ -516,7 +515,6 @@ function getTodayFormatted() {
 //Ruta para obtener datos Novillo de Arrendamiento del dia
 app.get('/novilloarrendamiento', async (req, res) => {
   const url = 'https://www.mercadoagroganadero.com.ar/dll/hacienda2.dll/haciinfo000013';
-
   const fechaHoy = getTodayFormatted();
 
   const formData = {
@@ -538,17 +536,13 @@ app.get('/novilloarrendamiento', async (req, res) => {
     });
 
     const $ = cheerio.load(response.data);
-
-
     const resultados = [];
-    
+
     $('table.table-striped > tbody > tr').each((i, el) => {
       const tds = $(el).find('td');
 
       if (tds.length >= 5) {
         const rawImporte = $(tds[2]).text().trim();
-
-        // Limpieza: saca puntos de miles, cambia coma decimal por punto, y parsea a número
         const importeNumerico = parseFloat(
           rawImporte.replace(/\./g, '').replace(',', '.')
         );
@@ -556,20 +550,22 @@ app.get('/novilloarrendamiento', async (req, res) => {
         resultados.push({
           fecha: $(tds[0]).text().trim(),
           cabIngresadas: $(tds[1]).text().trim(),
-          importe: importeNumerico, // <-- Limpieza
+          importe: importeNumerico,
           indiceArrendamiento: $(tds[3]).text().trim(),
           variacion: $(tds[4]).text().trim()
         });
       }
     });
 
-    res.json(resultados);
+    const primerValido = resultados.find(r => r.fecha.toLowerCase() !== 'totales');
+    res.json(primerValido ? [primerValido] : []);
 
   } catch (error) {
     console.error('Error en scraping de arrendamiento:', error.message);
     res.status(500).json({ error: 'Error al obtener los datos de arrendamiento' });
   }
 });
+
 
 // Ruta para obtener el archivo preciosChicago.json desde GitHub
 app.get('/precioschicago', async (req, res) => {
@@ -599,7 +595,6 @@ app.get('/precioschicago', async (req, res) => {
     });
   }
 });
-
 
 
 const PORT = process.env.PORT || 3000;
