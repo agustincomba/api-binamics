@@ -439,17 +439,21 @@ app.get('/dolarprecio', async (req, res) => {
     const toFloat = str => parseFloat(str.replace(',', '.'));
 
     // Modificar los valores de compra
-    const parseCotizacion = data => ({
-      ...data,
-      compra: data.compra ? toFloat(data.compra) : null
+    const parseCotizacion = (data, nombre) => ({
+      nombre_concepto: nombre,
+      compra: data.compra ? toFloat(data.compra) : null,
+      venta: data.venta ? toFloat(data.venta) : null,
+      fecha: data.fecha
     });
 
-    res.json({
-      dolar_oficial: parseCotizacion(oficial.data),
-      dolar_mep: parseCotizacion(mep.data),
-      dolar_ccl: parseCotizacion(ccl.data),
-      dolar_libre: parseCotizacion(libre.data)
-    });
+    const cotizaciones = [
+      parseCotizacion(oficial.data, "dolar_oficial"),
+      parseCotizacion(mep.data, "dolar_mep"),
+      parseCotizacion(ccl.data, "dolar_ccl"),
+      parseCotizacion(libre.data, "dolar_libre")
+    ];
+
+      res.json(cotizaciones);
 
   } catch (error) {
     console.error('Error al obtener cotizaciones:', error.message);
