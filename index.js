@@ -611,7 +611,7 @@ app.get('/precioschicago', async (req, res) => {
           datosValidos = [
             {
               producto: "Trigo",
-              fecha: fechaFormateada,
+              fecha: fechaEjecucion,
               precio: parseFloat($(celdas[1]).text().trim().replace(',', '.')) || null,
               variacion: parseFloat($(celdas[2]).text().trim().replace(',', '.')) || null
             },
