@@ -172,7 +172,7 @@ app.get('/precios', async (req, res) => {
     $('.board').each((index, element) => {
       const producto = $(element).find('h3').text().trim();
 
-      // ❌ Excluir Sorgo
+      // Excluir Sorgo
       if (producto.toLowerCase().includes('sorgo')) return;
 
       const precioTexto = $(element).find('.price').text().trim();
@@ -229,7 +229,6 @@ app.get('/precios', async (req, res) => {
     });
   }
 });
-
 
 // Ruta para obtener precios de un producto específico
 app.get('/precios/:producto', async (req, res) => {
@@ -465,6 +464,7 @@ app.get('/dolarprecio', async (req, res) => {
   }
 });
 
+// Ruta para obtener precio de novillo 461/490 Kg
 app.get('/novillo', async (req, res) => {
   try {
     const response = await axios.get('https://www.decampoacampo.com/gh_funciones.php?function=getListadoPreciosGordo');
@@ -502,81 +502,6 @@ app.get('/ternero', async (req, res) => {
 });
 
 const qs = require('qs');
-
-// // Función para formatear la fecha como dd/mm/yyyy
-// function getTodayFormatted() {
-//   const today = new Date();
-//   const day = String(today.getDate()).padStart(2, '0');
-//   const month = String(today.getMonth() + 1).padStart(2, '0'); // Enero = 0
-//   const year = today.getFullYear();
-//   return `${day}/${month}/${year}`;
-// }
-// //Ruta para obtener datos Novillo de Arrendamiento del dia
-// app.get('/novilloarrendamiento', async (req, res) => {
-//   const url = 'https://www.mercadoagroganadero.com.ar/dll/hacienda2.dll/haciinfo000013';
-
-//   const fechaHoy = getTodayFormatted();
-
-//   const formData = {
-//     ID: "",
-//     CP: "",
-//     FLASH: "",
-//     USUARIO: "SIN IDENTIFICAR",
-//     OPCIONMENU: "",
-//     OPCIONSUBMENU: "",
-//     txtFechaIni: fechaHoy,
-//     txtFechaFin: fechaHoy
-//   };
-
-//   try {
-//     const response = await axios.post(url, qs.stringify(formData), {
-//       headers: {
-//         'Content-Type': 'application/x-www-form-urlencoded'
-//       }
-//     });
-
-//     const $ = cheerio.load(response.data);
-
-//     const resultados = [];
-
-//     $('table.table-striped > tbody > tr').each((i, el) => {
-//       const tds = $(el).find('td');
-
-//       if (tds.length >= 5) {
-//         // Obtener y limpiar el importe
-//         const rawImporte = $(tds[2]).text().trim();
-//         const importeNumerico = parseFloat(
-//           rawImporte.replace(/\./g, '').replace(',', '.')
-//         );
-
-//         // Obtener y limpiar el índice de arrendamiento
-//         const rawIndice = $(tds[3]).text().trim();
-
-//         // Verificamos si contiene solo números, comas o puntos
-//         const indiceNumerico = /^[\d.,]+$/.test(rawIndice)
-//           ? parseFloat(rawIndice.replace(/\./g, '').replace(',', '.'))
-//           : null;
-
-//         resultados.push({
-//           fecha: $(tds[0]).text().trim(),
-//           cabIngresadas: $(tds[1]).text().trim(),
-//           importe: importeNumerico,
-//           indiceArrendamiento: indiceNumerico,
-//           variacion: $(tds[4]).text().trim()
-//         });
-//       }
-//     });
-
-//     // toma solo el valor del dia y no la de Totales
-//     const primerObject = resultados.find(r => r.fecha.toLowerCase() !== 'totales');
-//     res.json(primerObject ? [primerObject] : []);
-
-//   } catch (error) {
-//     console.error('Error en scraping de arrendamiento:', error.message);
-//     res.status(500).json({ error: 'Error al obtener los datos de arrendamiento' });
-//   }
-// });
-
 
 function formatDate(date) {
   const day = String(date.getDate()).padStart(2, '0');
@@ -659,36 +584,68 @@ app.get('/novilloarrendamiento', async (req, res) => {
   }
 });
 
-
-// Ruta para obtener el archivo preciosChicago.json desde GitHub
+// Ruta para obtener precios de chicago
 app.get('/precioschicago', async (req, res) => {
   try {
-    const githubRawUrl = 'https://raw.githubusercontent.com/agustincomba/scraping/main/preciosChicago.json';
+    const url = 'https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-internacionales-1';
+    const response = await axios.get(url);
+    const html = response.data;
+    const $ = cheerio.load(html);
 
-    const response = await axios.get(githubRawUrl);
-    const rawData = response.data;
+    const tabla = $('table.table').first();
+    const filas = tabla.find('tbody tr');
 
-    // Transformar 'cierre' a número
-    const data = rawData.map(item => ({
-      ...item,
-      cierre: parseFloat(item.cierre.replace(',', '.')) // <-- convierte cierre a número
-    }));
+    let datosValidos = null;
+
+    filas.each((i, el) => {
+      const celdas = $(el).find('td');
+      if (celdas.length >= 7) {
+        const posicion = $(celdas[0]).text().trim();
+
+        if (posicion && posicion !== '-') {
+          datosValidos = [
+            {
+              producto: "Trigo",
+              precio: parseFloat($(celdas[1]).text().trim().replace(',', '.')) || null,
+              variacion: parseFloat($(celdas[2]).text().trim().replace(',', '.')) || null
+            },
+            {
+              producto: "Maiz",
+              precio: parseFloat($(celdas[5]).text().trim().replace(',', '.')) || null,
+              variacion: parseFloat($(celdas[6]).text().trim().replace(',', '.')) || null
+            },
+            {
+              producto: "Soja",
+              precio: parseFloat($(celdas[7]).text().trim().replace(',', '.')) || null,
+              variacion: parseFloat($(celdas[8]).text().trim().replace(',', '.')) || null
+            }
+          ];
+          return false; // salimos del each porque ya tenemos la fila correcta
+        }
+      }
+    });
+
+    if (!datosValidos) {
+      return res.status(500).json({
+        success: false,
+        message: 'No se encontró una fila válida con datos.'
+      });
+    }
 
     res.json({
       success: true,
-      data
+      data: datosValidos
     });
 
   } catch (error) {
-    console.error('Error al leer el archivo de GitHub:', error.message);
+    console.error('Error al scrapear:', error.message);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener el archivo desde GitHub',
+      message: 'Error al obtener los datos',
       error: error.message
     });
   }
 });
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
