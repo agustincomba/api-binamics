@@ -403,7 +403,7 @@ app.get('/tasaactivabna', async (req, res) => {
     const tasaNominalAnualNumeric = parseFloat(tasaNominalAnual.replace(',', '.'));
     const fecha_consulta = new Date().toLocaleDateString('es-AR')
 
-    const tasaActiva = {fecha_consulta,tasaNominalAnualNumeric }
+    const tasaActiva = { fecha_consulta, tasaNominalAnualNumeric }
 
     res.json({ data: [tasaActiva] });
 
@@ -558,7 +558,7 @@ async function fetchIndiceByDate(date) {
     });
 
     const datoValido = resultados.find(r => r.fecha.toLowerCase() !== 'totales' && r.indiceArrendamiento !== null);
-    
+
     return datoValido || null;
 
   } catch (error) {
@@ -586,6 +586,8 @@ app.get('/novilloarrendamiento', async (req, res) => {
   }
 });
 
+
+
 // Ruta para obtener precios de chicago
 app.get('/precioschicago', async (req, res) => {
   try {
@@ -600,7 +602,14 @@ app.get('/precioschicago', async (req, res) => {
     let datosValidos = null;
 
     const fechaEjecucion = new Date();
-    const fechaFormateada = fechaEjecucion.toLocaleDateString('es-AR');
+
+    // Función para agregar cero a la izquierda si es menor a 10
+    function pad(n) {
+      return n < 10 ? '0' + n : n;
+    }
+
+    // Fecha en formato dd-MM-yyyy
+    const fechaFormateada = `${pad(fechaEjecucion.getDate())}-${pad(fechaEjecucion.getMonth() + 1)}-${fechaEjecucion.getFullYear()}`;
 
     filas.each((i, el) => {
       const celdas = $(el).find('td');
@@ -611,19 +620,19 @@ app.get('/precioschicago', async (req, res) => {
           datosValidos = [
             {
               producto: "Trigo",
-              fecha: fechaEjecucion,
+              fecha: fechaFormateada,
               precio: parseFloat($(celdas[1]).text().trim().replace(',', '.')) || null,
               variacion: parseFloat($(celdas[2]).text().trim().replace(',', '.')) || null
             },
             {
               producto: "Maiz",
-              fecha: fechaEjecucion,
+              fecha: fechaFormateada,
               precio: parseFloat($(celdas[5]).text().trim().replace(',', '.')) || null,
               variacion: parseFloat($(celdas[6]).text().trim().replace(',', '.')) || null
             },
             {
               producto: "Soja",
-              fecha: fechaEjecucion,
+              fecha: fechaFormateada,
               precio: parseFloat($(celdas[7]).text().trim().replace(',', '.')) || null,
               variacion: parseFloat($(celdas[8]).text().trim().replace(',', '.')) || null
             }
