@@ -424,20 +424,20 @@ app.get('/dolarprecio', async (req, res) => {
       dolar_oficial: 'https://mercados.ambito.com//dolarnacion//variacion',
       dolar_mep: 'https://mercados.ambito.com//dolarrava/mep/variacion',
       dolar_ccl: 'https://mercados.ambito.com//dolarrava/cl/variacion',
-      dolar_libre: 'https://mercados.ambito.com//dolar/informal/variacion'
+      dolar_libre: 'https://mercados.ambito.com//dolar/informal/variacion',
+      dolar_futuro: 'https://mercados.ambito.com//dolarfuturo/variacion'
     };
 
-    const [oficial, mep, ccl, libre] = await Promise.all([
+    const [oficial, mep, ccl, libre, futuro] = await Promise.all([
       axios.get(urls.dolar_oficial),
       axios.get(urls.dolar_mep),
       axios.get(urls.dolar_ccl),
-      axios.get(urls.dolar_libre)
+      axios.get(urls.dolar_libre),
+      axios.get(urls.dolar_futuro)
     ]);
 
-    // Función para convertir strings con coma a float
     const toFloat = str => parseFloat(str.replace(',', '.'));
 
-    // Modificar los valores de compra
     const parseCotizacion = (data, nombre) => ({
       nombre_concepto: nombre,
       compra: data.compra ? toFloat(data.compra) : null,
@@ -449,7 +449,8 @@ app.get('/dolarprecio', async (req, res) => {
       parseCotizacion(oficial.data, "dolar_oficial"),
       parseCotizacion(mep.data, "dolar_mep"),
       parseCotizacion(ccl.data, "dolar_ccl"),
-      parseCotizacion(libre.data, "dolar_libre")
+      parseCotizacion(libre.data, "dolar_libre"),
+      parseCotizacion(futuro.data, "dolar_futuro")
     ];
 
     res.json(cotizaciones);
