@@ -397,15 +397,15 @@ app.get('/tasaactivabna', async (req, res) => {
       });
     }
 
+
+
     // Convertir tasa a número
     const tasaNominalAnualNumeric = parseFloat(tasaNominalAnual.replace(',', '.'));
+    const fecha_consulta = new Date().toLocaleDateString('es-AR')
 
-    res.json({
-      success: true,
-      fecha_vigencia: fechaVigencia,
-      tasa_nominal_anual: tasaNominalAnualNumeric,
-      fecha_consulta: new Date().toLocaleDateString('es-AR')
-    });
+    const tasaActiva = {fecha_consulta,tasaNominalAnualNumeric }
+
+    res.json({ data: [tasaActiva] });
 
   } catch (error) {
     console.error('Error al hacer scraping de la tasa activa BNA:', error);
@@ -453,7 +453,7 @@ app.get('/dolarprecio', async (req, res) => {
       parseCotizacion(futuro.data, "dolar_futuro")
     ];
 
-    res.json(cotizaciones);
+    res.json({ data: cotizaciones });
 
   } catch (error) {
     console.error('Error al obtener cotizaciones:', error.message);
@@ -477,7 +477,7 @@ app.get('/novillo', async (req, res) => {
       return res.status(404).json({ error: "No se encontró la categoría solicitada." });
     }
 
-    res.json(novillo);
+    res.json({ data: [novillo] });
   } catch (error) {
     console.error('Error al obtener el novillo:', error);
     res.status(500).json({ error: 'Error al obtener los datos del novillo' });
@@ -495,7 +495,7 @@ app.get('/ternero', async (req, res) => {
       return res.status(404).json({ error: "No se encontró la categoría solicitada." });
     }
 
-    res.json(ternero);
+    res.json({ data: [ternero] });
   } catch (error) {
     console.error('Error al obtener el novillo:', error);
     res.status(500).json({ error: 'Error al obtener los datos del novillo' });
@@ -548,7 +548,7 @@ async function fetchIndiceByDate(date) {
           : null;
 
         resultados.push({
-          fecha: $(tds[0]).text().trim(),
+          fecha: fecha,
           cabIngresadas: $(tds[1]).text().trim(),
           importe: importeNumerico,
           indiceArrendamiento: indiceNumerico,
@@ -558,6 +558,7 @@ async function fetchIndiceByDate(date) {
     });
 
     const datoValido = resultados.find(r => r.fecha.toLowerCase() !== 'totales' && r.indiceArrendamiento !== null);
+    
     return datoValido || null;
 
   } catch (error) {
@@ -579,7 +580,7 @@ app.get('/novilloarrendamiento', async (req, res) => {
   }
 
   if (resultado) {
-    res.json([resultado]);
+    res.json({ data: [resultado] });
   } else {
     res.status(404).json({ error: 'No se encontró índice válido en los últimos días' });
   }
@@ -598,6 +599,9 @@ app.get('/precioschicago', async (req, res) => {
 
     let datosValidos = null;
 
+    const fechaEjecucion = new Date();
+    const fechaFormateada = fechaEjecucion.toLocaleDateString('es-AR');
+
     filas.each((i, el) => {
       const celdas = $(el).find('td');
       if (celdas.length >= 7) {
@@ -607,16 +611,19 @@ app.get('/precioschicago', async (req, res) => {
           datosValidos = [
             {
               producto: "Trigo",
+              fecha: fechaFormateada,
               precio: parseFloat($(celdas[1]).text().trim().replace(',', '.')) || null,
               variacion: parseFloat($(celdas[2]).text().trim().replace(',', '.')) || null
             },
             {
               producto: "Maiz",
+              fecha: fechaEjecucion,
               precio: parseFloat($(celdas[5]).text().trim().replace(',', '.')) || null,
               variacion: parseFloat($(celdas[6]).text().trim().replace(',', '.')) || null
             },
             {
               producto: "Soja",
+              fecha: fechaEjecucion,
               precio: parseFloat($(celdas[7]).text().trim().replace(',', '.')) || null,
               variacion: parseFloat($(celdas[8]).text().trim().replace(',', '.')) || null
             }
