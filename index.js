@@ -4,6 +4,8 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const app = express();
 
+const { getFechaFormateada } = require('./formatoFecha');
+
 
 // Configuración del token de API
 const API_TOKEN = process.env.API_TOKEN
@@ -197,7 +199,11 @@ app.get('/precios', async (req, res) => {
         precioEstimativo = precioEstMatch ? precioEstMatch[1] : precioSCText;
       }
 
+      //fecha de ejecucion
+      const fechaEjecucion = getFechaFormateada();
+
       precios.push({
+        fechaEjecucion,
         fecha,
         producto,
         precio: precioNumerico,
@@ -375,6 +381,8 @@ app.get('/tasaactivabna', async (req, res) => {
     let fechaVigencia = '';
     let tasaNominalAnual = '';
 
+
+
     $('body').find('p, div, span, h1, h2, h3, h4, h5, h6').each((index, element) => {
       const texto = $(element).text().trim();
 
@@ -397,13 +405,17 @@ app.get('/tasaactivabna', async (req, res) => {
       });
     }
 
-
+    //fecha de ejecucion
+    const fecha = getFechaFormateada();
 
     // Convertir tasa a número
     const tasaNominalAnualNumeric = parseFloat(tasaNominalAnual.replace(',', '.'));
-    const fecha_consulta = new Date().toLocaleDateString('es-AR')
 
-    const tasaActiva = { fecha_consulta, tasaNominalAnualNumeric }
+    const tasaActiva = {
+      concepto: "Tasa Activa BNA",
+      tasa: tasaNominalAnualNumeric,
+      fecha
+    }
 
     res.json({ data: [tasaActiva] });
 
@@ -436,21 +448,24 @@ app.get('/dolarprecio', async (req, res) => {
       axios.get(urls.dolar_futuro)
     ]);
 
+    //fecha de ejecucion
+    const fechaFormateada = getFechaFormateada();
+
     const toFloat = str => parseFloat(str.replace(',', '.'));
 
     const parseCotizacion = (data, nombre) => ({
-      nombre_concepto: nombre,
+      concepto: nombre,
       compra: data.compra ? toFloat(data.compra) : null,
       venta: data.venta ? toFloat(data.venta) : null,
-      fecha: data.fecha
+      fecha: fechaFormateada
     });
 
     const cotizaciones = [
-      parseCotizacion(oficial.data, "dolar_oficial"),
-      parseCotizacion(mep.data, "dolar_mep"),
-      parseCotizacion(ccl.data, "dolar_ccl"),
-      parseCotizacion(libre.data, "dolar_libre"),
-      parseCotizacion(futuro.data, "dolar_futuro")
+      parseCotizacion(oficial.data, "oficial"),
+      parseCotizacion(mep.data, "mep"),
+      parseCotizacion(ccl.data, "ccl"),
+      parseCotizacion(libre.data, "libre"),
+      parseCotizacion(futuro.data, "futuro")
     ];
 
     res.json({ data: cotizaciones });
@@ -471,13 +486,22 @@ app.get('/novillo', async (req, res) => {
     const response = await axios.get('https://www.decampoacampo.com/gh_funciones.php?function=getListadoPreciosGordo');
     const data = response.data;
 
+    //fecha de ejecucion
+    const fechaFormateada = getFechaFormateada();
+
     const novillo = data.data.find(item => item.categoria === "Novillos 461/490 Kg.");
 
-    if (!novillo) {
+    const dataNovillo = [{
+      categoria: novillo.categoria,
+      fecha: fechaFormateada,
+      precio: novillo.cantidad_semana_1
+    }]
+
+    if (!dataNovillo) {
       return res.status(404).json({ error: "No se encontró la categoría solicitada." });
     }
 
-    res.json({ data: [novillo] });
+    res.json({ data: dataNovillo });
   } catch (error) {
     console.error('Error al obtener el novillo:', error);
     res.status(500).json({ error: 'Error al obtener los datos del novillo' });
@@ -489,13 +513,24 @@ app.get('/ternero', async (req, res) => {
     const response = await axios.get('https://www.decampoacampo.com/gh_funciones.php?function=getListadoPreciosInvernada&p=1&m=peso');
     const data = response.data;
 
+    //fecha de ejecucion
+    const fechaFormateada = getFechaFormateada();
+
     const ternero = data.data.find(item => item.categoria === "Terneros 180-200 Kg.");
 
-    if (!ternero) {
+    const dataTernero = [{
+      categoria: ternero.categoria,
+      fecha: fechaFormateada,
+      precio: ternero.cantidad_semana_1
+    }]
+
+    // console.log(dataTernero)
+
+    if (!dataTernero) {
       return res.status(404).json({ error: "No se encontró la categoría solicitada." });
     }
 
-    res.json({ data: [ternero] });
+    res.json({ data: dataTernero });
   } catch (error) {
     console.error('Error al obtener el novillo:', error);
     res.status(500).json({ error: 'Error al obtener los datos del novillo' });
@@ -503,14 +538,12 @@ app.get('/ternero', async (req, res) => {
 });
 
 const qs = require('qs');
-
 function formatDate(date) {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
 }
-
 async function fetchIndiceByDate(date) {
   const url = 'https://www.mercadoagroganadero.com.ar/dll/hacienda2.dll/haciinfo000013';
   const fecha = formatDate(date);
@@ -536,6 +569,9 @@ async function fetchIndiceByDate(date) {
     const $ = cheerio.load(response.data);
     const resultados = [];
 
+    //fecha de ejecucion
+    const fechaFormateada = getFechaFormateada();
+
     $('table.table-striped > tbody > tr').each((i, el) => {
       const tds = $(el).find('td');
       if (tds.length >= 5) {
@@ -548,6 +584,7 @@ async function fetchIndiceByDate(date) {
           : null;
 
         resultados.push({
+          fechaEjecucion: fechaFormateada,
           fecha: fecha,
           cabIngresadas: $(tds[1]).text().trim(),
           importe: importeNumerico,
@@ -566,7 +603,6 @@ async function fetchIndiceByDate(date) {
     return null;
   }
 }
-
 app.get('/novilloarrendamiento', async (req, res) => {
   let date = new Date();
   const maxDiasAtras = 10; // intenta hasta 10 días hacia atrás si no encuentra
@@ -586,8 +622,6 @@ app.get('/novilloarrendamiento', async (req, res) => {
   }
 });
 
-
-
 // Ruta para obtener precios de chicago
 app.get('/precioschicago', async (req, res) => {
   try {
@@ -601,15 +635,8 @@ app.get('/precioschicago', async (req, res) => {
 
     let datosValidos = null;
 
-    const fechaEjecucion = new Date();
-
-    // Función para agregar cero a la izquierda si es menor a 10
-    function pad(n) {
-      return n < 10 ? '0' + n : n;
-    }
-
-    // Fecha en formato dd-MM-yyyy
-    const fechaFormateada = `${pad(fechaEjecucion.getDate())}-${pad(fechaEjecucion.getMonth() + 1)}-${fechaEjecucion.getFullYear()}`;
+    //fecha de ejecucion
+    const fechaFormateada = getFechaFormateada();
 
     filas.each((i, el) => {
       const celdas = $(el).find('td');
@@ -671,5 +698,4 @@ function getWeatherIcon(iconCode) {
   const iconPrefix = iconCode.slice(0, 2);
   return WEATHER_ICONS[iconPrefix] || '❓';
 }
-
 
