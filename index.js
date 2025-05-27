@@ -204,13 +204,13 @@ app.get('/precios', async (req, res) => {
 
       precios.push({
         fechaEjecucion,
-        fecha,
         producto,
+        fecha,
         precio: precioNumerico,
-        diferencia_precio: diferenciaPrecio,
-        diferencia_porcentaje: diferenciaPorcentaje,
+        // diferencia_precio: diferenciaPrecio,
+        // diferencia_porcentaje: diferenciaPorcentaje,
         tendencia,
-        precio_estimativo: precioEstimativo
+        // precio_estimativo: precioEstimativo
       });
     });
 
@@ -220,8 +220,8 @@ app.get('/precios', async (req, res) => {
 
     res.json({
       success: true,
-      fecha_actualizacion: fecha,
-      hora_actualizacion: hora,
+      // fecha_actualizacion: fecha,
+      // hora_actualizacion: hora,
       data: precios,
       total: precios.length
     });
@@ -253,6 +253,10 @@ app.get('/precios/:producto', async (req, res) => {
     // Array para almacenar los resultados filtrados
     const precios = [];
 
+
+    //fecha de ejecucion
+    const fechaEjecucion = getFechaFormateada();
+
     // Extraer información de cada tablero de precios (board)
     $('.board').each((index, element) => {
       const producto = $(element).find('h3').text().trim();
@@ -260,7 +264,9 @@ app.get('/precios/:producto', async (req, res) => {
       // Filtrar por producto (case insensitive)
       if (producto.toLowerCase().includes(productoQuery)) {
         const precioTexto = $(element).find('.price').text().trim();
-        const precio = precioTexto !== 'S/C' ? precioTexto : 'Sin cotización';
+        const precio = precioTexto !== 'S/C'
+          ? parseFloat(precioTexto.replace(/\./g, '').replace(',', '.').replace('$', ''))
+          : null;
 
         // Extraer información adicional
         const diferenciaPrecio = $(element).find('.bottom .cell:nth-child(2)').text().trim();
@@ -283,13 +289,14 @@ app.get('/precios/:producto', async (req, res) => {
         }
 
         precios.push({
-          fecha,
+          fechaEjecucion,
           producto,
+          fecha,
           precio,
-          diferencia_precio: diferenciaPrecio,
-          diferencia_porcentaje: diferenciaPorcentaje,
+          // diferencia_precio: diferenciaPrecio,
+          // diferencia_porcentaje: diferenciaPorcentaje,
           tendencia,
-          precio_estimativo: precioEstimativo
+          // precio_estimativo: precioEstimativo
         });
       }
     });
@@ -302,8 +309,8 @@ app.get('/precios/:producto', async (req, res) => {
     res.json({
       success: true,
       producto: productoQuery,
-      fecha_actualizacion: fecha,
-      hora_actualizacion: hora,
+      // fecha_actualizacion: fecha,
+      // hora_actualizacion: hora,
       data: precios,
       total: precios.length
     });
@@ -454,27 +461,74 @@ app.get('/dolarprecio', async (req, res) => {
     const toFloat = str => parseFloat(str.replace(',', '.'));
 
     const parseCotizacion = (data, nombre) => ({
+      fecha: fechaFormateada,
       concepto: nombre,
       compra: data.compra ? toFloat(data.compra) : null,
-      venta: data.venta ? toFloat(data.venta) : null,
-      fecha: fechaFormateada
+      venta: data.venta ? toFloat(data.venta) : null
     });
 
     const cotizaciones = [
-      parseCotizacion(oficial.data, "oficial"),
-      parseCotizacion(mep.data, "mep"),
-      parseCotizacion(ccl.data, "ccl"),
-      parseCotizacion(libre.data, "libre"),
-      parseCotizacion(futuro.data, "futuro")
+      parseCotizacion(oficial.data, "Oficial"),
+      parseCotizacion(mep.data, "Mep"),
+      parseCotizacion(ccl.data, "Ccl"),
+      parseCotizacion(libre.data, "Libre"),
+      parseCotizacion(futuro.data, "Futuro")
     ];
 
-    res.json({ data: cotizaciones });
+    res.json({ success: true, data: cotizaciones });
 
   } catch (error) {
     console.error('Error al obtener cotizaciones:', error.message);
     res.status(500).json({
       success: false,
       error: 'No se pudo obtener cotizaciones',
+      message: error.message
+    });
+  }
+});
+
+// Ruta para obtener el precio de un dólar específico según tipo
+app.get('/dolarprecio/:tipo', async (req, res) => {
+  try {
+    const tipo = req.params.tipo.toLowerCase();
+
+    const urls = {
+      oficial: 'https://mercados.ambito.com//dolarnacion//variacion',
+      mep: 'https://mercados.ambito.com//dolarrava/mep/variacion',
+      ccl: 'https://mercados.ambito.com//dolarrava/cl/variacion',
+      libre: 'https://mercados.ambito.com//dolar/informal/variacion',
+      futuro: 'https://mercados.ambito.com//dolarfuturo/variacion'
+    };
+
+    // Validar que el tipo exista
+    if (!urls[tipo]) {
+      return res.status(400).json({
+        success: false,
+        error: `Tipo de dólar inválido. Opciones: ${Object.keys(urls).join(', ')}`
+      });
+    }
+
+    const response = await axios.get(urls[tipo]);
+
+    //fecha de ejecucion
+    const fechaFormateada = getFechaFormateada();
+
+    const toFloat = str => parseFloat(str.replace(',', '.'));
+
+    const cotizacion = {
+      fecha: fechaFormateada,
+      concepto: tipo.charAt(0).toUpperCase() + tipo.slice(1),
+      compra: response.data.compra ? toFloat(response.data.compra) : null,
+      venta: response.data.venta ? toFloat(response.data.venta) : null
+    };
+
+    res.json({ success: true, data: cotizacion });
+
+  } catch (error) {
+    console.error('Error al obtener cotización:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'No se pudo obtener la cotización',
       message: error.message
     });
   }
@@ -491,17 +545,19 @@ app.get('/novillo', async (req, res) => {
 
     const novillo = data.data.find(item => item.categoria === "Novillos 461/490 Kg.");
 
+    // console.log(novillo), para extraer mas datos
+
     const dataNovillo = [{
-      categoria: novillo.categoria,
       fecha: fechaFormateada,
-      precio: novillo.cantidad_semana_1
+      concepto: novillo.categoria,
+      precio: novillo.precio_semana_1
     }]
 
     if (!dataNovillo) {
-      return res.status(404).json({ error: "No se encontró la categoría solicitada." });
+      return res.status(404).json({ success: false, error: "No se encontró la categoría solicitada." });
     }
 
-    res.json({ data: dataNovillo });
+    res.json({ success: true, data: dataNovillo });
   } catch (error) {
     console.error('Error al obtener el novillo:', error);
     res.status(500).json({ error: 'Error al obtener los datos del novillo' });
@@ -518,19 +574,20 @@ app.get('/ternero', async (req, res) => {
 
     const ternero = data.data.find(item => item.categoria === "Terneros 180-200 Kg.");
 
+    // console.log(ternero) para extraer mas datos
+
     const dataTernero = [{
-      categoria: ternero.categoria,
       fecha: fechaFormateada,
-      precio: ternero.cantidad_semana_1
+      concepto: ternero.categoria,
+      precio: ternero.precio_semana_1
     }]
 
-    // console.log(dataTernero)
 
     if (!dataTernero) {
-      return res.status(404).json({ error: "No se encontró la categoría solicitada." });
+      return res.status(404).json({ success: false, error: "No se encontró la categoría solicitada." });
     }
 
-    res.json({ data: dataTernero });
+    res.json({ success: true, data: dataTernero });
   } catch (error) {
     console.error('Error al obtener el novillo:', error);
     res.status(500).json({ error: 'Error al obtener los datos del novillo' });
@@ -585,11 +642,12 @@ async function fetchIndiceByDate(date) {
 
         resultados.push({
           fechaEjecucion: fechaFormateada,
+          concepto: "Novillo Arrendamiento",
           fecha: fecha,
-          cabIngresadas: $(tds[1]).text().trim(),
-          importe: importeNumerico,
           indiceArrendamiento: indiceNumerico,
-          variacion: $(tds[4]).text().trim()
+          importeTotal: importeNumerico
+          // cabIngresadas: $(tds[1]).text().trim(),
+          // variacion: $(tds[4]).text().trim()
         });
       }
     });
@@ -603,8 +661,8 @@ async function fetchIndiceByDate(date) {
     return null;
   }
 }
+let date = new Date();
 app.get('/novilloarrendamiento', async (req, res) => {
-  let date = new Date();
   const maxDiasAtras = 10; // intenta hasta 10 días hacia atrás si no encuentra
   let resultado = null;
 
@@ -616,7 +674,7 @@ app.get('/novilloarrendamiento', async (req, res) => {
   }
 
   if (resultado) {
-    res.json({ data: [resultado] });
+    res.json({ success: true, data: [resultado] });
   } else {
     res.status(404).json({ error: 'No se encontró índice válido en los últimos días' });
   }
@@ -646,20 +704,20 @@ app.get('/precioschicago', async (req, res) => {
         if (posicion && posicion !== '-') {
           datosValidos = [
             {
-              producto: "Trigo",
               fecha: fechaFormateada,
+              concepto: "Trigo Chicago",
               precio: parseFloat($(celdas[1]).text().trim().replace(',', '.')) || null,
               variacion: parseFloat($(celdas[2]).text().trim().replace(',', '.')) || null
             },
             {
-              producto: "Maiz",
               fecha: fechaFormateada,
+              concepto: "Maiz Chicago",
               precio: parseFloat($(celdas[5]).text().trim().replace(',', '.')) || null,
               variacion: parseFloat($(celdas[6]).text().trim().replace(',', '.')) || null
             },
             {
-              producto: "Soja",
               fecha: fechaFormateada,
+              concepto: "Soja Chicago",
               precio: parseFloat($(celdas[7]).text().trim().replace(',', '.')) || null,
               variacion: parseFloat($(celdas[8]).text().trim().replace(',', '.')) || null
             }
