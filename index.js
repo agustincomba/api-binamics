@@ -159,7 +159,7 @@ Pronóstico de 4 días:
 });
 
 // Ruta para obtener todos los precios de pizarra de la BCR
-app.get('/precios', async (req, res) => {
+app.get('/preciosbcr', async (req, res) => {
   try {
     const url = 'https://www.cac.bcr.com.ar/es/precios-de-pizarra';
     const response = await axios.get(url);
@@ -237,7 +237,7 @@ app.get('/precios', async (req, res) => {
 });
 
 // Ruta para obtener precios de un producto específico
-app.get('/precios/:producto', async (req, res) => {
+app.get('/preciosbcr/:producto', async (req, res) => {
   try {
     const productoQuery = req.params.producto.toLowerCase();
     const url = 'https://www.cac.bcr.com.ar/es/precios-de-pizarra';
@@ -379,7 +379,7 @@ app.get('/', (req, res) => {
 });
 
 // Ruta para obtener la Tasa Activa del BNA
-app.get('/tasaactivabna', async (req, res) => {
+app.get('/tasaactiva', async (req, res) => {
   try {
     const url = 'https://www.bna.com.ar/Home/InformacionAlUsuarioFinanciero';
     const response = await axios.get(url);
@@ -437,7 +437,7 @@ app.get('/tasaactivabna', async (req, res) => {
 });
 
 //Ruta para obtener los precios del dolar Ámbito
-app.get('/dolarprecio', async (req, res) => {
+app.get('/preciosdolar', async (req, res) => {
   try {
     const urls = {
       dolar_oficial: 'https://mercados.ambito.com//dolarnacion//variacion',
@@ -488,7 +488,7 @@ app.get('/dolarprecio', async (req, res) => {
 });
 
 // Ruta para obtener el precio de un dólar específico según tipo
-app.get('/dolarprecio/:tipo', async (req, res) => {
+app.get('/preciosdolar/:tipo', async (req, res) => {
   try {
     const tipo = req.params.tipo.toLowerCase();
 
