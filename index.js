@@ -522,7 +522,7 @@ app.get('/preciosdolar/:tipo', async (req, res) => {
       venta: response.data.venta ? toFloat(response.data.venta) : null
     };
 
-    res.json({ success: true, data: cotizacion });
+    res.json({ success: true, data: [cotizacion] });
 
   } catch (error) {
     console.error('Error al obtener cotización:', error.message);
