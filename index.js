@@ -595,7 +595,7 @@ app.get('/ternero', async (req, res) => {
 });
 
 const qs = require('qs');
-function formatDate(date) {
+function formatFecha(date) {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
@@ -603,7 +603,7 @@ function formatDate(date) {
 }
 async function fetchIndiceByDate(date) {
   const url = 'https://www.mercadoagroganadero.com.ar/dll/hacienda2.dll/haciinfo000013';
-  const fecha = formatDate(date);
+  const fecha = formatFecha(date);
 
   const formData = {
     ID: "",
